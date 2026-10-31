@@ -1,4 +1,4 @@
-const CACHE = 'mes-residences-v1';
+const CACHE = 'mes-residences-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
