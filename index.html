@@ -80,7 +80,7 @@ nav svg{width:22px;height:22px}
 #sheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--bg);border-radius:26px 26px 0 0;border-top:1px solid var(--gold);z-index:21;padding:10px 18px calc(22px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .25s ease}
 #sheet.open{transform:none}
 #sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--line2);margin:0 auto 12px}
-.seg{display:flex;background:var(--card);border:.5px solid var(--line2);border-radius:22px;padding:3px;margin:12px auto 14px;width:210px}
+.seg{display:flex;background:var(--card);border:.5px solid var(--line2);border-radius:22px;padding:3px;margin:12px auto 14px;width:290px;max-width:100%}
 .seg button{flex:1;padding:7px 0;border-radius:18px;font-size:13.5px;color:var(--mu)}
 .seg button.on{background:var(--gold);color:#fff8e0}
 .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
@@ -110,6 +110,21 @@ nav svg{width:22px;height:22px}
 .dp+.dp{margin-top:14px;padding-top:14px;border-top:.5px solid var(--line)}
 .lg{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--mu);justify-content:center;margin:-6px 0 10px}
 .lg>span{display:inline-flex;align-items:center;gap:5px}
+.ptb{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+.ptb th{font-size:9px;letter-spacing:.8px;color:var(--mu);font-weight:400;text-align:left;padding:6px 4px;border-bottom:1px solid var(--gold);text-transform:uppercase}
+.ptb td{padding:9px 4px;border-bottom:.5px solid var(--line);vertical-align:top;line-height:1.35}
+.ptb tr.r{cursor:pointer}
+.ptb tr.r:active td,.ptb tr.tday td{background:var(--card)}
+.ptb tr.nonly td{color:var(--mu)}
+.pcs{color:var(--honey);font-family:var(--serif);font-style:italic;font-size:13.5px}
+.sp{display:inline-block;background:var(--soft);color:var(--dark);border-radius:10px;padding:1px 8px;font-size:10.5px;margin:3px 3px 0 0}
+.pnt{font-size:11.5px;color:var(--mu);margin-top:3px;font-style:italic}
+.ptot td{border-bottom:0;padding-top:12px}
+.ndot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;border:1.2px solid var(--honey)}
+.timerow{display:flex;gap:8px;align-items:center}
+.timerow input{flex:1;min-width:0}
+.supit .bx{border-style:dashed}
+.dnote{margin-top:14px}
 #toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff8e0;padding:10px 18px;border-radius:22px;font-size:14px;opacity:0;transition:all .25s;z-index:30;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%)}
 .empty{padding:20px 0 6px}
@@ -132,7 +147,7 @@ nav svg{width:22px;height:22px}
 const KEY = 'mesResidences.v1';
 const DEFAULT = {
   residences: [
-    { id:'elia', nom:"Les Jardins d'Élia", court:'Élia', mono:'É', jours:[1,4], duree:'2h30',
+    { id:'elia', nom:"Les Jardins d'Élia", court:'Élia', mono:'É', jours:[1,4], duree:'2h30', debut:'08:00', fin:'10:30',
       adresse:"211 avenue des Anciens Combattants d'Afrique du Nord, 83390 Pierrefeu-du-Var",
       infos:"Code entrée bâtiment : 0212\nPortail en panne, reste ouvert\nEau au RDC dans le placard technique de chaque entrée\nPas de matériel sur place",
       notes:'',
@@ -145,7 +160,7 @@ const DEFAULT = {
         {id:'e6', texte:"Tapis brosse : brossage et balayage dans leur emplacement", consigne:''},
         {id:'e7', texte:"Dépoussiérer sonnettes, plinthes et luminaires des escaliers", consigne:''}
       ]},
-    { id:'gaia', nom:'Gaïa', court:'Gaïa', mono:'G', jours:[2,5], duree:'3h00',
+    { id:'gaia', nom:'Gaïa', court:'Gaïa', mono:'G', jours:[2,5], duree:'3h00', debut:'08:00', fin:'11:00',
       adresse:'110-120 allée des Platanes, 83390 Pierrefeu-du-Var',
       infos:'', notes:'',
       checklist:[
@@ -180,7 +195,8 @@ const DEFAULT = {
   ],
   contact: { nom:'SASU Cristiano', tel:'06 28 60 42 07', adresse:'6 rue Pierre Brossolette, 83400 Hyères' },
   checks: {},
-  moves: {}
+  moves: {},
+  plan: {}, added: [], removed: [], dayNotes: {}
 };
 
 /* ---------- Stockage ---------- */
@@ -189,6 +205,17 @@ function load(){
   return JSON.parse(JSON.stringify(DEFAULT));
 }
 let S = load();
+/* mise à niveau des données existantes */
+(function migrate(){
+  S.plan = S.plan || {}; S.added = S.added || []; S.removed = S.removed || []; S.dayNotes = S.dayNotes || {};
+  const defFin = { elia:'10:30', gaia:'11:00' };
+  for (const r of S.residences){
+    if (!r.debut) r.debut = '08:00';
+    if (!r.fin) r.fin = defFin[r.id] || '11:00';
+  }
+  const lab = { s1:'Garages', s2:'Lavage containers' };
+  for (const e of S.espacees) if (!e.label && lab[e.id]) e.label = lab[e.id];
+})();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ toast("Enregistrement impossible"); } }
 
 /* ---------- Dates ---------- */
@@ -204,6 +231,13 @@ const JOURS = ['','lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanc
 const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const longDate = s => { const d = parse(s); return `${JOURS[dow(s)]} ${d.getDate()} ${MOIS[d.getMonth()]}`; };
 const shortDate = s => { const d = parse(s); return `${d.getDate()} ${MOIS[d.getMonth()]}`; };
+const MOISC0 = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const shortC = s => { const d = parse(s); return `${d.getDate()} ${MOISC0[d.getMonth()]}`; };
+const fmtH = t => { if (!t) return ''; const [h,m] = t.split(':'); return `${+h}h${m}`; };
+const minutes = t => { if (!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + m; };
+const diffH = (a,b) => Math.max(0, Math.round((minutes(b) - minutes(a)) / 15) / 4);
+const fmtDur = n => (Math.round(n*100)/100).toString().replace('.', ',') + ' h';
+function addMonths(D, k){ const d = parse(D), day = d.getDate(); const t = new Date(d.getFullYear(), d.getMonth() + k, 1); const dim = new Date(t.getFullYear(), t.getMonth()+1, 0).getDate(); t.setDate(Math.min(day, dim)); return ymd(t); }
 
 /* nettoyage des vieilles coches et déplacements */
 (function clean(){
@@ -223,22 +257,42 @@ function toast(msg){ const t = document.getElementById('toast'); t.textContent =
 const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff8e0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
 /* ---------- Passages ---------- */
+const isRemoved = k => S.removed.includes(k);
 function passagesFor(D){
   const out = [];
   for (const r of S.residences){
     if (r.jours.includes(dow(D))){
-      const mv = S.moves[D + '|' + r.id];
-      if (!mv || mv === D) out.push({ nat:D, res:r, moved:false });
+      const k = D + '|' + r.id, mv = S.moves[k];
+      if (!isRemoved(k) && (!mv || mv === D)) out.push({ nat:D, res:r, moved:false });
     }
   }
   for (const [k,v] of Object.entries(S.moves)){
-    if (v !== D) continue;
+    if (v !== D || isRemoved(k)) continue;
     const [nat, rid] = k.split('|');
     const r = resById(rid);
     if (r && nat !== D && r.jours.includes(dow(nat))) out.push({ nat, res:r, moved:true });
   }
-  return out;
+  for (const k of S.added){
+    if (isRemoved(k)) continue;
+    const [nat, rid] = k.split('|'), r = resById(rid); if (!r) continue;
+    const real = S.moves[k] || nat;
+    if (real === D && !out.some(p => p.nat === nat && p.res.id === rid)) out.push({ nat, res:r, moved: real !== nat, added:true });
+  }
+  return out.sort((a,b) => minutes(info(a).debut) - minutes(info(b).debut));
 }
+function info(p){
+  const r = p.res, o = S.plan[p.nat + '|' + r.id] || {};
+  const debut = o.debut || r.debut, fin = o.fin || r.fin;
+  return { debut, fin, duree: (o.duree != null && o.duree !== '') ? +o.duree : diffH(debut, fin), sup: o.sup || [], supTxt: o.supTxt || '' };
+}
+const horaire = p => { const i = info(p); return `${fmtH(i.debut)}–${fmtH(i.fin)}`; };
+function itemsOf(p){
+  const i = info(p), ids = p.res.checklist.map(t => t.id);
+  for (const id of i.sup) if (S.espacees.some(e => e.id === id)) ids.push('sup:' + id);
+  if (i.supTxt) ids.push('sup:txt');
+  return ids;
+}
+const realDate = p => S.moves[p.nat + '|' + p.res.id] || p.nat;
 function nextPassage(from){
   for (let i = 1; i <= 21; i++){ const d = addDays(from, i); const p = passagesFor(d); if (p.length) return { d, p:p[0] }; }
   return null;
@@ -249,13 +303,37 @@ const checksOf = (nat, rid) => S.checks[nat + '|' + rid] || [];
 const PER = { semaine:7, mois:30.44, an:365.25 };
 const interval = e => PER[e.per] / Math.max(1, e.n);
 const freqLabel = e => `${e.n} fois par ${e.per}`;
-function etat(e){
-  if (!e.fait) return { due:true, label:'À faire', rest:-999 };
-  const rest = Math.round(interval(e) - diffDays(e.fait, today()));
-  if (rest <= 0) return { due:true, label:'À faire', rest };
-  const label = rest < 14 ? `Dans ${rest} j` : rest < 60 ? `Dans ${Math.round(rest/7)} sem.` : `Dans ${Math.round(rest/30.44)} mois`;
-  return { due:false, label, rest };
+const supLabel = e => e.label || e.texte;
+function nextPlanned(e){
+  let best = null;
+  for (const [k,o] of Object.entries(S.plan)){
+    if (!o.sup || !o.sup.includes(e.id) || isRemoved(k)) continue;
+    const [nat] = k.split('|'), real = S.moves[k] || nat;
+    if (real < today()) continue;
+    if ((S.checks[k] || []).includes('sup:' + e.id)) continue;
+    if (!best || real < best) best = real;
+  }
+  return best;
 }
+function estNext(e){
+  if (!e.fait) return null;
+  const n = Math.max(1, e.n);
+  if (e.per === 'semaine') return addDays(e.fait, Math.round(7 / n));
+  if (e.per === 'mois') return n === 1 ? addMonths(e.fait, 1) : addDays(e.fait, Math.round(30.44 / n));
+  return 12 % n === 0 ? addMonths(e.fait, 12 / n) : addDays(e.fait, Math.round(365.25 / n));
+}
+function etat(e){
+  const pl = nextPlanned(e);
+  if (pl){
+    const rest = diffDays(today(), pl);
+    return { due: rest === 0, planned: pl, label: rest === 0 ? "Aujourd'hui" : 'Le ' + shortC(pl), rest, plan:true };
+  }
+  if (!e.fait) return { due:true, label:'À faire', rest:-999 };
+  const nx = estNext(e), rest = diffDays(today(), nx);
+  if (rest <= 0) return { due:true, label:'À faire', rest, est:nx };
+  return { due:false, label:'Vers le ' + shortC(nx), rest, est:nx };
+}
+function setFaitFromHist(e){ const h = (e.hist || []).filter(x => x <= today()).sort(); e.fait = h.length ? h[h.length-1] : null; }
 
 /* ---------- Navigation ---------- */
 let tab = 'jour';
@@ -293,27 +371,46 @@ function vJour(){
       <div class="h2" style="margin-top:12px">Pas de passage</div>
       <div class="mu" style="font-size:14px">${nx ? `Prochain : ${esc(nx.p.res.court)}, ${esc(longDate(nx.d))}` : 'Aucun passage prévu'}</div>
     </div></div>`;
-    return h;
   }
   for (const p of ps) h += blocPassage(p, D);
+  h += `<div class="frame"><div class="in" style="padding-top:14px">${noteBox(D)}
+    <button class="btn full small" data-act="addPas" data-d="${D}" style="margin-top:12px">+ Ajouter un passage ce jour</button></div></div>`;
   return h;
+}
+function noteBox(D){
+  return `<label class="lb" for="dn-${D}" style="margin-top:0">Note du jour</label>
+    <textarea id="dn-${D}" data-dnote="${D}" placeholder="Remarque, problème, heure en plus…">${esc(S.dayNotes[D] || '')}</textarea>`;
 }
 
 function blocPassage(p, D){
   const r = p.res, ch = checksOf(p.nat, r.id);
   const total = r.checklist.length, done = r.checklist.filter(t => ch.includes(t.id)).length;
   const pct = total ? Math.round(done / total * 100) : 0;
-  const dues = S.espacees.filter(e => e.res === r.id && etat(e).due);
+  const inf = info(p), supIds = inf.sup.filter(id => S.espacees.some(e => e.id === id));
+  const dues = S.espacees.filter(e => e.res === r.id && etat(e).due && !supIds.includes(e.id));
+  const items = itemsOf(p), doneAll = items.filter(id => ch.includes(id)).length;
   let h = `<div class="frame"><div class="in">
     <div class="center">
       <div class="mono">${esc(r.mono)}</div>
       <div class="title">${esc(r.court)}</div>
-      <div class="mu" style="font-size:12.5px">${esc(r.adresse)}${r.duree ? ' · ' + esc(r.duree) : ''}</div>
+      <div class="au" style="font-size:14px;margin-top:2px">${horaire(p)} · ${fmtDur(inf.duree)}</div>
+      <div class="mu" style="font-size:12px;margin-top:2px">${esc(r.adresse)}</div>
       ${p.moved ? `<div class="au small" style="margin-top:6px">Déplacé du ${esc(longDate(p.nat))}</div>` : ''}
     </div>
     <div class="orn"><i></i></div>
-    <div style="display:flex;justify-content:space-between" class="mu small"><span class="sc">Checklist</span><span><span class="au">${done}</span> / ${total}</span></div>
-    <div class="bar"><div style="width:${pct}%"></div></div>`;
+    <div style="display:flex;justify-content:space-between" class="mu small"><span class="sc">Checklist</span><span><span class="au">${doneAll}</span> / ${items.length}</span></div>
+    <div class="bar"><div style="width:${items.length ? Math.round(doneAll / items.length * 100) : 0}%"></div></div>`;
+  for (const id of supIds){
+    const e = S.espacees.find(x => x.id === id), on = ch.includes('sup:' + id);
+    h += `<button class="it supit${on ? ' on' : ''}" data-act="tick" data-nat="${p.nat}" data-res="${r.id}" data-t="sup:${id}" data-d="${D}">
+      <span class="bx">${CHECK}</span>
+      <span><span class="sp" style="margin:0 0 3px">En plus</span><br><span class="tx">${esc(supLabel(e))}${e.label && e.label !== e.texte ? ' · ' + esc(e.texte) : ''}</span>${e.detail ? `<span class="cons" style="font-style:normal;font-family:inherit;color:var(--mu)">${esc(e.detail.split('\n').filter(x => x.trim()).join(' · '))}</span>` : ''}${e.consigne ? `<span class="cons">— ${esc(e.consigne)}</span>` : ''}</span></button>`;
+  }
+  if (inf.supTxt){
+    const on = ch.includes('sup:txt');
+    h += `<button class="it supit${on ? ' on' : ''}" data-act="tick" data-nat="${p.nat}" data-res="${r.id}" data-t="sup:txt" data-d="${D}">
+      <span class="bx">${CHECK}</span><span><span class="sp" style="margin:0 0 3px">En plus</span><br><span class="tx">${esc(inf.supTxt)}</span></span></button>`;
+  }
   for (const t of r.checklist){
     const on = ch.includes(t.id);
     h += `<button class="it${on ? ' on' : ''}" data-act="tick" data-nat="${p.nat}" data-res="${r.id}" data-t="${t.id}">
@@ -323,11 +420,12 @@ function blocPassage(p, D){
   if (!total) h += `<div class="mu center" style="padding:14px 0;font-size:14px">Checklist vide. Ajoute des tâches dans Fiches.</div>`;
   if (dues.length){
     h += `<div class="box"><div class="sc center" style="margin-bottom:6px">À faire aussi</div>`;
-    for (const e of dues) h += `<div class="row"><span><span class="serif" style="font-style:italic;font-size:15.5px">${esc(e.texte)}</span><br><span class="small" style="opacity:.8">${esc(freqLabel(e))}${e.duree ? ' · ' + esc(e.duree) : ''}</span></span>
+    for (const e of dues) h += `<div class="row"><span><span class="serif" style="font-style:italic;font-size:15.5px">${esc(e.texte)}</span><br><span class="small" style="opacity:.8">${esc(freqLabel(e))}${e.duree ? ' · ' + esc(e.duree) : ''}${etat(e).est ? ' · prévu vers le ' + esc(shortC(etat(e).est)) : ''}</span></span>
       <button class="btn small" style="border-color:var(--dark);color:var(--dark)" data-act="esp" data-id="${e.id}">Voir</button></div>`;
     h += `</div>`;
   }
-  if (r.notes && r.notes.trim()) h += `<div class="notes"><div class="sc mu" style="margin-bottom:6px">Notes</div>${esc(r.notes)}</div>`;
+  if (r.notes && r.notes.trim()) h += `<div class="notes"><div class="sc mu" style="margin-bottom:6px">Notes de la résidence</div>${esc(r.notes)}</div>`;
+  h += `<div class="row2" style="margin-top:12px"><button class="btn small" data-act="plan" data-nat="${p.nat}" data-res="${r.id}" data-d="${D}">Horaires et suppléments</button></div>`;
   return h + `</div></div>`;
 }
 
@@ -337,7 +435,7 @@ const JC = ['','Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const MOISC = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 function espDoneOn(D){ return S.espacees.filter(e => (e.hist || []).includes(D) || e.fait === D); }
 function passState(p){
-  const r = p.res, ch = checksOf(p.nat, r.id), done = r.checklist.filter(t => ch.includes(t.id)).length, tot = r.checklist.length;
+  const ch = checksOf(p.nat, p.res.id), it = itemsOf(p), done = it.filter(id => ch.includes(id)).length, tot = it.length;
   return { done, tot, full: tot > 0 && done === tot };
 }
 function pastille(p, big){
@@ -346,8 +444,8 @@ function pastille(p, big){
 }
 function vSemaine(){
   let h = `<div class="center"><div class="sc mu">Planning</div><div class="h2">Mon calendrier</div></div>
-  <div class="seg"><button class="${calMode === 'semaine' ? 'on' : ''}" data-act="cal" data-m="semaine">Semaine</button><button class="${calMode === 'mois' ? 'on' : ''}" data-act="cal" data-m="mois">Mois</button></div>`;
-  return h + (calMode === 'mois' ? vMois() : vWeek());
+  <div class="seg"><button class="${calMode === 'semaine' ? 'on' : ''}" data-act="cal" data-m="semaine">Semaine</button><button class="${calMode === 'mois' ? 'on' : ''}" data-act="cal" data-m="mois">Mois</button><button class="${calMode === 'planning' ? 'on' : ''}" data-act="cal" data-m="planning">Planning</button></div>`;
+  return h + (calMode === 'mois' ? vMois() : calMode === 'planning' ? vPlanning() : vWeek());
 }
 function vWeek(){
   const W = monday(selDay), end = addDays(W, 6), dW = parse(W), dE = parse(end);
@@ -363,7 +461,7 @@ function vWeek(){
     h += `<button class="wc${D === today() ? ' t' : ''}${D === selDay ? ' s' : ''}" data-act="sel" data-d="${D}">
       <span class="wh">${JC[i+1]}</span><span class="wn">${parse(D).getDate()}</span>
       <span class="pts">${ps.length ? ps.map(p => pastille(p, true)).join('') : '<span class="pt z big"></span>'}</span>
-      <span class="wd">${ps.length === 1 ? esc(ps[0].res.duree) : ''}</span>${esp ? '<span class="edot"></span>' : '<span class="edot z"></span>'}</button>`;
+      <span class="wd">${ps.length === 1 ? fmtDur(info(ps[0]).duree) : ''}</span>${esp || S.dayNotes[D] ? `<span class="edot${esp ? '' : ' z'}"></span>` : '<span class="edot z"></span>'}</button>`;
   }
   h += `</div>` + detailJour(selDay) + `</div></div>` + legende();
   return h;
@@ -376,12 +474,14 @@ function detailJour(D){
     const st = passState(p), pct = st.tot ? Math.round(st.done / st.tot * 100) : 0;
     h += `<div class="dp"><div style="display:flex;align-items:center;gap:12px"><span class="mono" style="width:42px;height:42px;margin:0;font-size:17px">${esc(p.res.mono)}</span>
       <div style="flex:1"><div class="serif au" style="font-style:italic;font-size:20px">${esc(p.res.court)}</div>
-      <div class="mu small">${esc(p.res.duree)}${p.moved ? ' · déplacé du ' + esc(longDate(p.nat)) : ''}</div></div>
+      <div class="mu small">${horaire(p)} · ${fmtDur(info(p).duree)}${p.moved ? ' · déplacé du ' + esc(longDate(p.nat)) : ''}</div>
+      ${info(p).sup.length || info(p).supTxt ? `<div>${info(p).sup.map(id => S.espacees.find(e => e.id === id)).filter(Boolean).map(e => `<span class="sp">${esc(supLabel(e))}</span>`).join('')}${info(p).supTxt ? `<span class="sp">${esc(info(p).supTxt)}</span>` : ''}</div>` : ''}</div>
       <div class="au small">${st.done}/${st.tot}</div></div>
       <div class="bar"><div style="width:${pct}%"></div></div>
-      <div class="row2" style="margin-top:10px"><button class="btn fill small" data-act="open" data-d="${D}">Ouvrir la checklist</button><button class="btn small" data-act="move" data-nat="${p.nat}" data-res="${p.res.id}">Déplacer</button></div></div>`;
+      <div class="row2" style="margin-top:10px"><button class="btn fill small" data-act="open" data-d="${D}">Ouvrir la checklist</button><button class="btn small" data-act="plan" data-nat="${p.nat}" data-res="${p.res.id}" data-d="${D}">Modifier</button></div></div>`;
   }
   if (esp.length) h += `<div class="mu small" style="margin-top:10px">${esp.map(e => '· ' + esc(e.texte) + ' (' + esc(resById(e.res)?.court || '') + ') fait').join('<br>')}</div>`;
+  h += `<div class="dnote">${noteBox(D)}</div><button class="btn full small" data-act="addPas" data-d="${D}" style="margin-top:10px">+ Ajouter un passage</button>`;
   return h + `</div>`;
 }
 function vMois(){
@@ -399,13 +499,47 @@ function vMois(){
   for (let D = first; D <= lastW; D = addDays(D, 1)){
     const out = parse(D).getMonth() !== m, ps = out ? [] : passagesFor(D), esp = out ? 0 : espDoneOn(D).length;
     h += `<button class="mc${out ? ' o' : ''}${D === today() ? ' t' : ''}${!out && D === selDay ? ' s' : ''}" data-act="${out ? '' : 'sel'}" data-d="${D}">
-      <span>${parse(D).getDate()}</span><span class="pts">${ps.map(p => pastille(p)).join('')}</span>${esp ? '<span class="edot abs"></span>' : ''}</button>`;
+      <span>${parse(D).getDate()}</span><span class="pts">${ps.map(p => pastille(p)).join('')}</span>${esp ? '<span class="edot abs"></span>' : ''}${!out && S.dayNotes[D] ? '<span class="ndot"></span>' : ''}</button>`;
   }
   h += `</div>` + (parse(selDay).getMonth() === m && parse(selDay).getFullYear() === y ? detailJour(selDay) : '') + `</div></div>` + legende();
   return h;
 }
 function legende(){
-  return `<div class="lg"><span><span class="pt f sm">G</span>fait</span><span><span class="pt e sm">G</span>à faire</span><span><span class="pt mv sm">É</span>déplacé</span><span><span class="edot" style="margin:0"></span>tâche espacée faite</span></div>`;
+  return `<div class="lg"><span><span class="pt f sm">G</span>fait</span><span><span class="pt e sm">G</span>à faire</span><span><span class="pt mv sm">É</span>déplacé</span><span><span class="edot" style="margin:0"></span>tâche espacée faite</span><span><span style="width:7px;height:7px;border-radius:50%;border:1.2px solid var(--honey);display:inline-block"></span>note</span></div>`;
+}
+function vPlanning(){
+  const M0 = parse(monthStart), y = M0.getFullYear(), m = M0.getMonth(), days = new Date(y, m + 1, 0).getDate();
+  const titre = MOIS[m].charAt(0).toUpperCase() + MOIS[m].slice(1) + ' ' + y;
+  let rows = '', tot = 0, nb = 0;
+  for (let i = 1; i <= days; i++){
+    const D = ymd(new Date(y, m, i)), ps = passagesFor(D), note = S.dayNotes[D];
+    const dl = `${pad(i)}&nbsp;${MOISC0[m]}`;
+    if (!ps.length && note){
+      rows += `<tr class="r nonly${D === today() ? ' tday' : ''}" data-act="sel" data-d="${D}" data-goto="1"><td>${dl}</td><td colspan="2">—</td><td><div class="pnt">${esc(note)}</div></td></tr>`;
+      continue;
+    }
+    ps.forEach((p, j) => {
+      const inf = info(p); tot += inf.duree; nb++;
+      const sups = inf.sup.map(id => S.espacees.find(e => e.id === id)).filter(Boolean).map(e => `<span class="sp">${esc(supLabel(e))}</span>`).join('') + (inf.supTxt ? `<span class="sp">${esc(inf.supTxt)}</span>` : '');
+      rows += `<tr class="r${D === today() ? ' tday' : ''}" data-act="plan" data-nat="${p.nat}" data-res="${p.res.id}" data-d="${D}">
+        <td>${j ? '' : dl}</td><td>${fmtH(inf.debut)}<br>${fmtH(inf.fin)}</td><td>${fmtDur(inf.duree).replace(' h','')}</td>
+        <td><span class="pcs">${esc(p.res.nom)}</span>${sups ? '<br>' + sups : ''}${p.moved ? '<div class="pnt">déplacé du ' + esc(shortC(p.nat)) + '</div>' : ''}${!j && note ? `<div class="pnt">${esc(note)}</div>` : ''}</td></tr>`;
+    });
+  }
+  return `<div class="weeknav" style="margin-bottom:12px">
+    <button class="arrow" data-act="month" data-n="-1" aria-label="Mois précédent">‹</button>
+    <div class="center"><div class="serif au" style="font-style:italic;font-size:20px">${titre}</div>
+    ${monthStart !== today().slice(0,8) + '01' ? `<button class="small au" data-act="month" data-n="0" style="margin-top:4px">Ce mois-ci</button>` : ''}</div>
+    <button class="arrow" data-act="month" data-n="1" aria-label="Mois suivant">›</button></div>
+  <div class="frame"><div class="in" style="padding:12px 8px 12px">
+  <table class="ptb"><colgroup><col style="width:17%"><col style="width:17%"><col style="width:13%"><col style="width:53%"></colgroup>
+  <thead><tr><th>Date</th><th>Horaires</th><th>Durée</th><th>Consignes</th></tr></thead>
+  <tbody>${rows || '<tr><td colspan="4" class="mu center" style="padding:18px 0">Aucun passage ce mois-ci</td></tr>'}</tbody>
+  <tbody><tr class="ptot"><td colspan="2" class="sc au" style="font-size:10px">Total ${MOIS[m]}</td><td colspan="2"><span class="serif au" style="font-size:17px">${fmtDur(tot)}</span> <span class="mu small">· ${nb} passage${nb > 1 ? 's' : ''}</span></td></tr></tbody>
+  </table>
+  <button class="btn full small" data-act="addPas" data-d="${monthStart.slice(0,7) === today().slice(0,7) ? today() : monthStart}" style="margin-top:12px">+ Ajouter un passage</button>
+  </div></div>
+  <div class="mu small center" style="margin:-6px 0 10px">Touche une ligne pour modifier horaires, durée, suppléments et note.</div>`;
 }
 
 function vEspacees(){
@@ -418,7 +552,7 @@ function vEspacees(){
     for (const e of list){
       const st = etat(e);
       h += `<button class="li" data-act="esp" data-id="${e.id}"><span><span style="font-size:15px">${esc(e.texte)}</span><br>
-        <span class="mu small">${esc(freqLabel(e))}${e.duree ? ' · ' + esc(e.duree) : ''} · ${e.fait ? 'fait le ' + esc(shortDate(e.fait)) : 'jamais fait'}</span></span>
+        <span class="mu small">${esc(freqLabel(e))}${e.duree ? ' · ' + esc(e.duree) : ''} · ${e.fait ? 'fait le ' + esc(shortDate(e.fait)) : 'jamais fait'}${st.plan ? ' · au planning' : ''}</span></span>
         <span class="pill ${st.due ? 'go' : 'wait'}">${esc(st.label)}</span></button>`;
     }
     h += `</div></div></div>`;
@@ -432,7 +566,7 @@ function vFiches(){
     h += `<div class="frame"><div class="in">
       <div class="center"><div class="mono">${esc(r.mono)}</div><div class="title" style="font-size:28px">${esc(r.nom)}</div>
       <div class="mu small">${esc(r.adresse)}</div>
-      <div class="au small" style="margin-top:6px">${r.jours.map(j => JOURS[j]).join(' et ') || 'aucun jour'}${r.duree ? ' · ' + esc(r.duree) + ' par passage' : ''}</div></div>
+      <div class="au small" style="margin-top:6px">${r.jours.map(j => JOURS[j]).join(' et ') || 'aucun jour'} · ${fmtH(r.debut)}–${fmtH(r.fin)}</div></div>
       <div class="orn"><i></i></div>`;
     if (r.infos && r.infos.trim()){
       h += `<div class="sc mu" style="margin-bottom:6px">Infos pratiques</div><div class="list">` +
@@ -486,12 +620,13 @@ function sheetEsp(id){
   const st = etat(e), r = resById(e.res);
   openSheet(`<div class="center"><div class="sc mu">${esc(r ? r.court : '')} · ${esc(freqLabel(e))}</div><div class="h2">${esc(e.texte)}</div>
     <div class="mu small">${e.fait ? 'Fait le ' + esc(longDate(e.fait)) : 'Jamais fait'}${e.duree ? ' · ' + esc(e.duree) : ''}</div>
-    <div style="margin-top:8px"><span class="pill ${st.due ? 'go' : 'wait'}">${esc(st.label)}</span></div></div>
+    <div style="margin-top:8px"><span class="pill ${st.due ? 'go' : 'wait'}">${esc(st.label)}</span></div>
+    ${st.plan ? '<div class="au small" style="margin-top:6px">Prévue au planning le ' + esc(longDate(st.planned)) + '</div>' : st.est ? '<div class="mu small" style="margin-top:6px">Estimation d\'après la fréquence</div>' : ''}</div>
     ${e.detail ? `<div class="orn"><i></i></div><div class="list">${e.detail.split('\n').filter(x => x.trim()).map(x => `<div class="li" style="font-size:14.5px">${esc(x)}</div>`).join('')}</div>` : ''}
     ${e.consigne ? `<div class="cons" style="text-align:center;margin-top:10px;font-size:15px">— ${esc(e.consigne)}</div>` : ''}
     <div class="row2"><button class="btn fill" data-act="espDone" data-id="${e.id}">Fait aujourd'hui</button></div>
     <label class="lb" for="espd">Ou corriger la date</label>
-    <div style="display:flex;gap:10px"><input type="date" id="espd" value="${e.fait || ''}"><button class="btn" data-act="espDate" data-id="${e.id}">OK</button></div>
+    <div style="display:flex;gap:10px"><input type="date" id="espd" max="${today()}" value="${e.fait || ''}"><button class="btn" data-act="espDate" data-id="${e.id}">OK</button></div>
     <div class="row2"><button class="btn" data-act="espEdit" data-id="${e.id}">Modifier</button></div>`);
 }
 
@@ -501,6 +636,7 @@ function sheetEspEdit(id){
   openSheet(`<div class="center"><div class="sc mu">Tâche espacée</div><div class="h2">${isNew ? 'Nouvelle tâche' : 'Modifier'}</div></div>
     <label class="lb">Résidence</label><select id="f-res">${S.residences.map(r => `<option value="${r.id}"${r.id === e.res ? ' selected' : ''}>${esc(r.court)}</option>`).join('')}</select>
     <label class="lb">Nom</label><input id="f-texte" value="${esc(e.texte)}" placeholder="Parking et sous-sol">
+    <label class="lb">Nom court au planning</label><input id="f-label" value="${esc(e.label || '')}" placeholder="Garages">
     <label class="lb">Fréquence</label>
     <div style="display:flex;gap:10px"><input id="f-n" type="number" min="1" max="12" value="${e.n}" style="width:90px"><span class="mu" style="align-self:center">fois par</span>
       <select id="f-per">${['semaine','mois','an'].map(p => `<option${p === e.per ? ' selected' : ''}>${p}</option>`).join('')}</select></div>
@@ -540,9 +676,34 @@ function sheetRes(rid){
     <label class="lb">Adresse</label><input id="r-adr" value="${esc(r.adresse)}">
     <label class="lb">Jours de passage</label>
     <div class="chips" id="r-jours">${[1,2,3,4,5,6].map(j => `<button class="chip${r.jours.includes(j) ? ' on' : ''}" data-act="chip" data-j="${j}">${JOURS[j]}</button>`).join('')}</div>
-    <label class="lb">Durée par passage</label><input id="r-duree" value="${esc(r.duree)}">
+    <label class="lb">Horaires habituels</label>
+    <div class="timerow"><input type="time" id="r-debut" value="${r.debut}"><span class="mu">à</span><input type="time" id="r-fin" value="${r.fin}"></div>
     <label class="lb">Infos pratiques (une ligne par info)</label><textarea id="r-infos">${esc(r.infos)}</textarea>
     <div class="row2"><button class="btn fill" data-act="resSave" data-res="${rid}">Enregistrer</button></div>`);
+}
+function sheetPlan(nat, rid, D){
+  const r = resById(rid), p = { nat, res:r }, inf = info(p), k = nat + '|' + rid, o = S.plan[k] || {};
+  const esp = S.espacees.filter(e => e.res === rid);
+  openSheet(`<div class="center"><div class="sc mu">${esc(longDate(D))}</div><div class="h2">${esc(r.nom)}</div>
+    ${D !== nat ? `<div class="mu small">Déplacé du ${esc(longDate(nat))}</div>` : ''}</div>
+    <label class="lb">Horaires</label>
+    <div class="timerow"><input type="time" id="p-debut" value="${inf.debut}" data-auto="1"><span class="mu">à</span><input type="time" id="p-fin" value="${inf.fin}" data-auto="1"></div>
+    <label class="lb" for="p-duree">Durée (heures)</label>
+    <input type="number" id="p-duree" step="0.25" min="0" inputmode="decimal" value="${inf.duree}">
+    <label class="lb">Suppléments</label>
+    <div class="chips" id="p-sup">${esp.map(e => `<button class="chip${inf.sup.includes(e.id) ? ' on' : ''}" data-act="chip" data-id="${e.id}">${esc(supLabel(e))}</button>`).join('') || '<span class="mu small">Aucune tâche espacée pour cette résidence.</span>'}</div>
+    <input id="p-suptxt" value="${esc(inf.supTxt)}" placeholder="Autre supplément (facultatif)" style="margin-top:10px">
+    <label class="lb" for="p-note">Note du jour</label>
+    <textarea id="p-note" placeholder="Remarque, problème, heure en plus…">${esc(S.dayNotes[D] || '')}</textarea>
+    <div class="row2"><button class="btn fill" data-act="planSave" data-nat="${nat}" data-res="${rid}" data-d="${D}">Enregistrer</button></div>
+    <div class="row2"><button class="btn" data-act="move" data-nat="${nat}" data-res="${rid}">Déplacer</button><button class="btn danger" data-act="pasDel" data-nat="${nat}" data-res="${rid}">Supprimer</button></div>
+    ${o.debut || o.fin || o.duree != null ? `<div class="center" style="margin-top:12px"><button class="small au" data-act="planReset" data-nat="${nat}" data-res="${rid}">Remettre les horaires habituels</button></div>` : ''}`);
+}
+function sheetAdd(D){
+  openSheet(`<div class="center"><div class="sc mu">Planning</div><div class="h2">Ajouter un passage</div></div>
+    <label class="lb" for="a-date">Jour</label><input type="date" id="a-date" value="${D}">
+    <label class="lb" for="a-res">Résidence</label><select id="a-res">${S.residences.map(r => `<option value="${r.id}">${esc(r.nom)}</option>`).join('')}</select>
+    <div class="row2"><button class="btn fill" data-act="addSave">Ajouter</button></div>`);
 }
 function sheetContact(){
   const c = S.contact;
@@ -565,10 +726,50 @@ document.addEventListener('click', ev => {
       const k = d.nat + '|' + d.res, arr = S.checks[k] || (S.checks[k] = []);
       const i = arr.indexOf(d.t);
       if (i >= 0) arr.splice(i,1); else arr.push(d.t);
+      if (d.t.startsWith('sup:') && d.t !== 'sup:txt'){
+        const e = S.espacees.find(x => x.id === d.t.slice(4)), day = d.d || d.nat;
+        if (e){
+          if (i < 0) e.hist = [...new Set([...(e.hist || []), day])];
+          else e.hist = (e.hist || []).filter(x => x !== day);
+          if (e.fait && !(e.hist || []).includes(e.fait) && e.fait !== day) e.hist = [...(e.hist || []), e.fait];
+          setFaitFromHist(e);
+        }
+      }
       save(); vib(15);
-      const r = resById(d.res);
-      if (i < 0 && r.checklist.every(t => arr.includes(t.id))) { vib([30,60,30]); toast('Passage terminé'); }
+      const p = { nat:d.nat, res:resById(d.res) };
+      if (i < 0 && itemsOf(p).every(id => arr.includes(id))) { vib([30,60,30]); toast('Passage terminé'); }
       render(); break;
+    }
+    case 'plan': sheetPlan(d.nat, d.res, d.d || d.nat); break;
+    case 'planSave': {
+      const k = d.nat + '|' + d.res, r = resById(d.res);
+      const debut = val('p-debut') || r.debut, fin = val('p-fin') || r.fin, du = val('p-duree').replace(',', '.');
+      const o = { sup:[...document.querySelectorAll('#p-sup .chip.on')].map(c => c.dataset.id), supTxt:val('p-suptxt') };
+      if (debut !== r.debut) o.debut = debut;
+      if (fin !== r.fin) o.fin = fin;
+      if (du !== '' && +du !== diffH(debut, fin)) o.duree = +du;
+      if (!o.sup.length) delete o.sup; if (!o.supTxt) delete o.supTxt;
+      if (Object.keys(o).length) S.plan[k] = o; else delete S.plan[k];
+      const note = document.getElementById('p-note').value.trim();
+      if (note) S.dayNotes[d.d] = note; else delete S.dayNotes[d.d];
+      save(); closeSheet(); render(); toast('Planning enregistré'); break;
+    }
+    case 'planReset': { const k = d.nat + '|' + d.res, o = S.plan[k]; if (o){ delete o.debut; delete o.fin; delete o.duree; } save(); sheetPlan(d.nat, d.res, S.moves[k] || d.nat); render(); break; }
+    case 'pasDel': {
+      if (!confirm('Supprimer ce passage du planning ?')) break;
+      const k = d.nat + '|' + d.res;
+      if (S.added.includes(k)) S.added = S.added.filter(x => x !== k); else if (!S.removed.includes(k)) S.removed.push(k);
+      delete S.moves[k]; delete S.plan[k];
+      save(); closeSheet(); render(); toast('Passage supprimé'); break;
+    }
+    case 'addPas': sheetAdd(d.d || today()); break;
+    case 'addSave': {
+      const D = val('a-date'), rid = val('a-res'); if (!D) { toast('Choisis un jour'); break; }
+      const k = D + '|' + rid;
+      if (passagesFor(D).some(p => p.res.id === rid)) { toast('Ce passage existe déjà'); break; }
+      if (S.removed.includes(k)) S.removed = S.removed.filter(x => x !== k);
+      else S.added.push(k);
+      save(); selDay = D; sheetPlan(D, rid, D); render(); break;
     }
     case 'day': curDate = d.n === '0' ? today() : addDays(curDate, +d.n); render(); break;
     case 'week': selDay = d.n === '0' ? today() : addDays(selDay, +d.n); render(); break;
@@ -577,8 +778,8 @@ document.addEventListener('click', ev => {
       else { const M = parse(monthStart); M.setMonth(M.getMonth() + (+d.n)); monthStart = ymd(M); selDay = (monthStart.slice(0,7) === today().slice(0,7)) ? today() : monthStart; }
       render(); break;
     }
-    case 'cal': calMode = d.m; try { sessionStorage.setItem('mr.cal', calMode); } catch(e){} if (calMode === 'mois') monthStart = selDay.slice(0,8) + '01'; vib(8); render(); break;
-    case 'sel': if (d.d) { selDay = d.d; vib(6); render(); } break;
+    case 'cal': calMode = d.m; try { sessionStorage.setItem('mr.cal', calMode); } catch(e){} if (calMode !== 'semaine') monthStart = selDay.slice(0,8) + '01'; vib(8); render(); break;
+    case 'sel': if (d.d) { selDay = d.d; if (d.goto) { calMode = 'semaine'; try { sessionStorage.setItem('mr.cal', calMode); } catch(e){} } vib(6); render(); } break;
     case 'open': curDate = d.d; tab = 'jour'; try { sessionStorage.setItem('mr.tab','jour'); } catch(e){} render(); window.scrollTo(0,0); break;
     case 'move': sheetMove(d.nat, d.res); break;
     case 'mvSave': {
@@ -590,12 +791,12 @@ document.addEventListener('click', ev => {
     case 'mvReset': delete S.moves[d.k]; save(); closeSheet(); render(); toast('Passage remis au jour prévu'); break;
     case 'esp': sheetEsp(d.id); break;
     case 'espDone': { const e = S.espacees.find(x => x.id === d.id); e.fait = today(); e.hist = [...new Set([...(e.hist || []), today()])]; save(); vib(20); closeSheet(); render(); toast('Noté comme fait'); break; }
-    case 'espDate': { const e = S.espacees.find(x => x.id === d.id), v = val('espd'); if (e.fait && e.hist) e.hist = e.hist.filter(x => x !== e.fait); e.fait = v || null; if (v) e.hist = [...new Set([...(e.hist || []), v])]; save(); sheetEsp(e.id); render(); break; }
+    case 'espDate': { const e = S.espacees.find(x => x.id === d.id), v = val('espd'); if (v && v > today()) { toast('Choisis une date passée'); break; } if (e.fait && e.hist) e.hist = e.hist.filter(x => x !== e.fait); e.fait = v || null; if (v) e.hist = [...new Set([...(e.hist || []), v])]; save(); sheetEsp(e.id); render(); break; }
     case 'espEdit': sheetEspEdit(d.id); break;
     case 'espNew': sheetEspEdit(null); break;
     case 'espSave': {
       const texte = val('f-texte'); if (!texte) { toast('Donne un nom à la tâche'); break; }
-      const data = { res:val('f-res'), texte, n:Math.min(12, Math.max(1, parseInt(val('f-n')) || 1)), per:val('f-per'), duree:val('f-duree'), detail:val('f-detail'), consigne:val('f-cons') };
+      const data = { res:val('f-res'), texte, n:Math.min(12, Math.max(1, parseInt(val('f-n')) || 1)), per:val('f-per'), duree:val('f-duree'), detail:val('f-detail'), consigne:val('f-cons'), label:val('f-label') };
       if (d.id) Object.assign(S.espacees.find(x => x.id === d.id), data); else S.espacees.push({ id:uid(), fait:null, ...data });
       save(); closeSheet(); render(); toast('Enregistré'); break;
     }
@@ -620,7 +821,7 @@ document.addEventListener('click', ev => {
     case 'resSave': {
       const r = resById(d.res);
       const court = val('r-court') || r.court;
-      Object.assign(r, { nom:val('r-nom') || r.nom, court, mono:court.charAt(0).toUpperCase(), adresse:val('r-adr'), duree:val('r-duree'), infos:val('r-infos'),
+      Object.assign(r, { nom:val('r-nom') || r.nom, court, mono:court.charAt(0).toUpperCase(), adresse:val('r-adr'), debut:val('r-debut') || r.debut, fin:val('r-fin') || r.fin, infos:val('r-infos'),
         jours:[...document.querySelectorAll('#r-jours .chip.on')].map(c => +c.dataset.j) });
       save(); closeSheet(); render(); toast('Fiche enregistrée'); break;
     }
@@ -632,7 +833,13 @@ document.addEventListener('click', ev => {
 /* notes : enregistrement automatique */
 let notesT;
 document.addEventListener('input', ev => {
-  const rid = ev.target.dataset && ev.target.dataset.notes; if (!rid) return;
+  const ds = ev.target.dataset || {};
+  if (ds.auto){ const du = document.getElementById('p-duree'); if (du) du.value = diffH(val('p-debut'), val('p-fin')); return; }
+  if (ds.dnote){
+    const v = ev.target.value; if (v.trim()) S.dayNotes[ds.dnote] = v; else delete S.dayNotes[ds.dnote];
+    clearTimeout(notesT); notesT = setTimeout(save, 400); return;
+  }
+  const rid = ds.notes; if (!rid) return;
   resById(rid).notes = ev.target.value;
   clearTimeout(notesT); notesT = setTimeout(save, 400);
 });
