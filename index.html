@@ -125,6 +125,10 @@ nav svg{width:22px;height:22px}
 .timerow input{flex:1;min-width:0}
 .supit .bx{border-style:dashed}
 .dnote{margin-top:14px}
+.bath{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 2px;padding:7px 12px;background:var(--soft);border-radius:12px;color:var(--dark)}
+.bath .serif{font-style:italic;font-size:17px}
+.bath.ok{background:var(--gold);color:#fff8e0}
+.bath + .it{border-top:0}
 #toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff8e0;padding:10px 18px;border-radius:22px;font-size:14px;opacity:0;transition:all .25s;z-index:30;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%)}
 .empty{padding:20px 0 6px}
@@ -193,7 +197,7 @@ const DEFAULT = {
     {id:'s7', res:'gaia', texte:'Plots lumineux extérieurs', n:4, per:'an', duree:'',
      detail:'Dépoussiérage', consigne:'', fait:null}
   ],
-  contact: { nom:'SASU Cristiano', tel:'06 28 60 42 07', adresse:'6 rue Pierre Brossolette, 83400 Hyères' },
+  contact: { nom:'SASU Cristiano', tel:'06 28 60 42 07', mail:'', adresse:'6 rue Pierre Brossolette, 83400 Hyères' },
   checks: {},
   moves: {},
   plan: {}, added: [], removed: [], dayNotes: {}
@@ -213,6 +217,14 @@ let S = load();
     if (!r.debut) r.debut = '08:00';
     if (!r.fin) r.fin = defFin[r.id] || '11:00';
   }
+  for (const r of S.residences) if (!r.bats) r.bats = ['A','B'];
+  for (const [k, arr] of Object.entries(S.checks)){
+    const r = S.residences.find(x => x.id === k.split('|')[1]); if (!r || !r.bats.length) continue;
+    const ids = new Set(r.checklist.map(t => t.id)), out = [];
+    for (const id of arr){ if (ids.has(id)) r.bats.forEach(b => out.push(b + ':' + id)); else out.push(id); }
+    S.checks[k] = [...new Set(out)];
+  }
+  if (S.contact && S.contact.mail === undefined) S.contact.mail = '';
   const lab = { s1:'Garages', s2:'Lavage containers' };
   for (const e of S.espacees) if (!e.label && lab[e.id]) e.label = lab[e.id];
 })();
@@ -286,8 +298,11 @@ function info(p){
   return { debut, fin, duree: (o.duree != null && o.duree !== '') ? +o.duree : diffH(debut, fin), sup: o.sup || [], supTxt: o.supTxt || '' };
 }
 const horaire = p => { const i = info(p); return `${fmtH(i.debut)}–${fmtH(i.fin)}`; };
+const batsOf = r => (r.bats && r.bats.length) ? r.bats : [''];
+const ckId = (b, id) => b ? b + ':' + id : id;
 function itemsOf(p){
-  const i = info(p), ids = p.res.checklist.map(t => t.id);
+  const i = info(p), ids = [];
+  for (const b of batsOf(p.res)) for (const t of p.res.checklist) ids.push(ckId(b, t.id));
   for (const id of i.sup) if (S.espacees.some(e => e.id === id)) ids.push('sup:' + id);
   if (i.supTxt) ids.push('sup:txt');
   return ids;
@@ -411,11 +426,17 @@ function blocPassage(p, D){
     h += `<button class="it supit${on ? ' on' : ''}" data-act="tick" data-nat="${p.nat}" data-res="${r.id}" data-t="sup:txt" data-d="${D}">
       <span class="bx">${CHECK}</span><span><span class="sp" style="margin:0 0 3px">En plus</span><br><span class="tx">${esc(inf.supTxt)}</span></span></button>`;
   }
-  for (const t of r.checklist){
-    const on = ch.includes(t.id);
-    h += `<button class="it${on ? ' on' : ''}" data-act="tick" data-nat="${p.nat}" data-res="${r.id}" data-t="${t.id}">
-      <span class="bx">${CHECK}</span>
-      <span><span class="tx">${esc(t.texte)}</span>${t.consigne ? `<span class="cons">— ${esc(t.consigne)}</span>` : ''}</span></button>`;
+  for (const b of batsOf(r)){
+    if (b){
+      const nb = r.checklist.filter(t => ch.includes(ckId(b, t.id))).length, all = nb === r.checklist.length && nb > 0;
+      h += `<div class="bath${all ? ' ok' : ''}"><span class="serif">Bâtiment ${esc(b)}</span><span class="small">${all ? 'terminé' : nb + ' / ' + r.checklist.length}</span></div>`;
+    }
+    for (const t of r.checklist){
+      const id = ckId(b, t.id), on = ch.includes(id);
+      h += `<button class="it${on ? ' on' : ''}" data-act="tick" data-nat="${p.nat}" data-res="${r.id}" data-t="${id}">
+        <span class="bx">${CHECK}</span>
+        <span><span class="tx">${esc(t.texte)}</span>${t.consigne ? `<span class="cons">— ${esc(t.consigne)}</span>` : ''}</span></button>`;
+    }
   }
   if (!total) h += `<div class="mu center" style="padding:14px 0;font-size:14px">Checklist vide. Ajoute des tâches dans Fiches.</div>`;
   if (dues.length){
@@ -582,6 +603,7 @@ function vFiches(){
     <div class="sc mu">Contact</div><div class="title" style="font-size:26px">${esc(c.nom)}</div>
     <div class="mu small">${esc(c.adresse)}</div>
     <div class="row2">${tel ? `<a class="btn fill" href="tel:${esc(tel)}" style="text-decoration:none">Appeler ${esc(c.tel)}</a>` : ''}</div>
+    ${c.mail ? `<div class="row2"><a class="btn" href="mailto:${esc(c.mail)}" style="text-decoration:none;word-break:break-all">Écrire à ${esc(c.mail)}</a></div>` : `<div class="mu small" style="margin-top:10px">Ajoute l'adresse mail dans « Modifier le contact ».</div>`}
     <button class="small au" data-act="editContact" style="margin-top:12px">Modifier le contact</button>
   </div></div>`;
   return h;
@@ -678,6 +700,7 @@ function sheetRes(rid){
     <div class="chips" id="r-jours">${[1,2,3,4,5,6].map(j => `<button class="chip${r.jours.includes(j) ? ' on' : ''}" data-act="chip" data-j="${j}">${JOURS[j]}</button>`).join('')}</div>
     <label class="lb">Horaires habituels</label>
     <div class="timerow"><input type="time" id="r-debut" value="${r.debut}"><span class="mu">à</span><input type="time" id="r-fin" value="${r.fin}"></div>
+    <label class="lb">Bâtiments (séparés par une virgule, vide = pas de séparation)</label><input id="r-bats" value="${esc((r.bats || []).join(', '))}" placeholder="A, B">
     <label class="lb">Infos pratiques (une ligne par info)</label><textarea id="r-infos">${esc(r.infos)}</textarea>
     <div class="row2"><button class="btn fill" data-act="resSave" data-res="${rid}">Enregistrer</button></div>`);
 }
@@ -710,6 +733,7 @@ function sheetContact(){
   openSheet(`<div class="center"><div class="sc mu">Contact</div><div class="h2">Modifier</div></div>
     <label class="lb">Nom</label><input id="c-nom" value="${esc(c.nom)}">
     <label class="lb">Téléphone</label><input id="c-tel" type="tel" value="${esc(c.tel)}">
+    <label class="lb">Mail</label><input id="c-mail" type="email" inputmode="email" autocomplete="email" value="${esc(c.mail || '')}" placeholder="contact@exemple.fr">
     <label class="lb">Adresse</label><input id="c-adr" value="${esc(c.adresse)}">
     <div class="row2"><button class="btn fill" data-act="cSave">Enregistrer</button></div>`);
 }
@@ -821,12 +845,12 @@ document.addEventListener('click', ev => {
     case 'resSave': {
       const r = resById(d.res);
       const court = val('r-court') || r.court;
-      Object.assign(r, { nom:val('r-nom') || r.nom, court, mono:court.charAt(0).toUpperCase(), adresse:val('r-adr'), debut:val('r-debut') || r.debut, fin:val('r-fin') || r.fin, infos:val('r-infos'),
+      Object.assign(r, { nom:val('r-nom') || r.nom, court, mono:court.charAt(0).toUpperCase(), adresse:val('r-adr'), debut:val('r-debut') || r.debut, fin:val('r-fin') || r.fin, infos:val('r-infos'), bats:val('r-bats').split(',').map(x => x.trim()).filter(Boolean),
         jours:[...document.querySelectorAll('#r-jours .chip.on')].map(c => +c.dataset.j) });
       save(); closeSheet(); render(); toast('Fiche enregistrée'); break;
     }
     case 'editContact': sheetContact(); break;
-    case 'cSave': Object.assign(S.contact, { nom:val('c-nom'), tel:val('c-tel'), adresse:val('c-adr') }); save(); closeSheet(); render(); toast('Contact enregistré'); break;
+    case 'cSave': Object.assign(S.contact, { nom:val('c-nom'), tel:val('c-tel'), mail:val('c-mail'), adresse:val('c-adr') }); save(); closeSheet(); render(); toast('Contact enregistré'); break;
   }
 });
 
